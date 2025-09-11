@@ -9,11 +9,16 @@ import reset from "styled-reset";
 import { useEffect, useState } from "react";
 import LoadingScreen from "./components/loading-screen";
 import { auth } from "./routes/firebase";
+import ProtectedRoute from "./components/protected-route";
 
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <Layout />,
+    element: (
+      <ProtectedRoute>
+        <Layout />
+      </ProtectedRoute>
+    ),
     children: [
       {
         path: "",
@@ -56,6 +61,7 @@ function App() {
   const init = async () => {
     //fb 기다리기
     // setTimeout(() => setLoading(false), 2000);
+    //사용자가 로그인 했는지 안했는지 그리고 누구인지에 대한 정보 기다리기
     await auth.authStateReady();
     setLoading(false);
   };
