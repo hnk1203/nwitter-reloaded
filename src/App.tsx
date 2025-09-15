@@ -48,7 +48,12 @@ const GlobalStyles = createGlobalStyle`
   body {
     background-color: black;
     color : white;
+     -ms-overflow-style: none;
   }
+ 
+::-webkit-scrollbar {
+  display: none;
+}
 `;
 
 const Wrapper = styled.div`
