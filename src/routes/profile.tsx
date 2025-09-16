@@ -1,7 +1,19 @@
 import styled from "styled-components";
 import { auth, db } from "./firebase";
 import { useState, useEffect } from "react";
-import { collection, doc, setDoc, getDoc } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  setDoc,
+  getDoc,
+  query,
+  where,
+  orderBy,
+  limit,
+  getDocs,
+} from "firebase/firestore";
+import type { ITweet } from "../components/timeline";
+import Tweet from "../components/tweets";
 
 const Wrapper = styled.div`
   display: flex;
@@ -48,12 +60,19 @@ const InfoMessage = styled.p`
   font-size: 14px;
 `;
 
+const Tweets = styled.div`
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 10px;
+`;
+
 export default function Profile() {
   const user = auth.currentUser;
   const [avatar, setAvatar] = useState(user?.photoURL);
   const [newFile, setNewFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
-
+  const [tweets, setTweets] = useState<ITweet[]>();
   // 컴포넌트가 처음 로드될 때 Firestore에서 아바타 불러오기
   useEffect(() => {
     const fetchAvatar = async () => {
@@ -114,6 +133,30 @@ export default function Profile() {
     }
   };
 
+  const fetchTweets = async () => {
+    const tweetQuery = query(
+      collection(db, "tweets"),
+      where("userId", "==", user?.uid),
+      orderBy("createdAt", "desc"),
+      limit(25)
+    );
+    const snapshot = await getDocs(tweetQuery);
+    const tweets = snapshot.docs.map((doc) => {
+      const { tweet, createdAt, userId, username, fileData } = doc.data();
+      return {
+        tweet,
+        createdAt,
+        userId,
+        username,
+        fileData,
+        id: doc.id,
+      };
+    });
+    setTweets(tweets);
+  };
+  useEffect(() => {
+    fetchTweets();
+  }, []);
   return (
     <Wrapper>
       <AvatarUpload htmlFor="avatar">
@@ -149,6 +192,11 @@ export default function Profile() {
       <InfoMessage>
         참고: Firebase Authentication의 프로필 사진은 변경되지 않습니다.
       </InfoMessage>
+      <Tweets>
+        {tweets?.map((tweet) => (
+          <Tweet key={tweet.id} {...tweet} />
+        ))}
+      </Tweets>
     </Wrapper>
   );
 }
