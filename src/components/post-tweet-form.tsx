@@ -105,7 +105,6 @@ export default function PostTweetForm() {
         userId: user.uid,
         fileData: file, // Base64 문자열 저장
       });
-      //파일은 나중에 구현합시다 ㅅㅂ
       setTweet("");
       setFile(null);
     } catch (e) {
