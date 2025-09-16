@@ -11,7 +11,10 @@ import {
   orderBy,
   limit,
   getDocs,
+  updateDoc,
 } from "firebase/firestore";
+import { updateProfile } from "firebase/auth"; // updateProfile 함수를 import 합니다.
+
 import type { ITweet } from "../components/timeline";
 import Tweet from "../components/tweets";
 
@@ -43,6 +46,7 @@ const AvatarInput = styled.input`
 `;
 const Name = styled.span`
   font-size: 22px;
+  cursor: pointer;
 `;
 const SaveButton = styled.button`
   background-color: #3f51b5;
@@ -54,10 +58,6 @@ const SaveButton = styled.button`
   border-radius: 5px;
   cursor: pointer;
   margin-top: 10px;
-`;
-const InfoMessage = styled.p`
-  color: #ccc;
-  font-size: 14px;
 `;
 
 const Tweets = styled.div`
@@ -72,7 +72,9 @@ export default function Profile() {
   const [avatar, setAvatar] = useState(user?.photoURL);
   const [newFile, setNewFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
-  const [tweets, setTweets] = useState<ITweet[]>();
+  const [tweets, setTweets] = useState<ITweet[]>([]);
+  const [name, setName] = useState(user?.displayName ?? "익명");
+
   // 컴포넌트가 처음 로드될 때 Firestore에서 아바타 불러오기
   useEffect(() => {
     const fetchAvatar = async () => {
@@ -116,10 +118,7 @@ export default function Profile() {
         const userDocRef = doc(db, "avatars", user.uid);
         await setDoc(userDocRef, { photoURL: fileData });
 
-        // 1. 상태를 즉시 업데이트해서 화면에 바로 반영
         setAvatar(fileData);
-
-        // 2. newFile 상태를 초기화해서 '저장' 버튼을 숨김
         setNewFile(null);
 
         alert("프로필 사진이 성공적으로 업데이트되었습니다.");
@@ -130,6 +129,42 @@ export default function Profile() {
       alert("프로필 사진 업데이트에 실패했습니다.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // 닉네임 변경 함수
+  const onChangeNick = async () => {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    const newName = prompt("새로운 닉네임을 입력하세요.");
+    if (!newName || newName.trim() === "" || newName === user.displayName)
+      return;
+
+    try {
+      // 1. Firebase Authentication 닉네임 업데이트
+      await updateProfile(user, { displayName: newName });
+
+      // 2. 사용자가 작성한 모든 트윗을 찾습니다.
+      const tweetsCollectionRef = collection(db, "tweets");
+      const q = query(tweetsCollectionRef, where("userId", "==", user.uid));
+      const userTweetsSnapshot = await getDocs(q);
+
+      // 3. 각 트윗을 반복하며 username 필드를 업데이트합니다.
+      const updatePromises = userTweetsSnapshot.docs.map((docSnapshot) => {
+        const tweetDocRef = doc(db, "tweets", docSnapshot.id);
+        return updateDoc(tweetDocRef, { username: newName });
+      });
+
+      // 4. 모든 업데이트가 완료될 때까지 기다립니다.
+      await Promise.all(updatePromises);
+
+      // 5. 컴포넌트 상태를 업데이트해서 화면에 즉시 반영합니다.
+      setName(newName);
+      alert("닉네임 업데이트 완려어오.");
+    } catch (e) {
+      console.error("닉네임 변경 실패:", e);
+      alert("닉네임 변경에 실패했습니다.");
     }
   };
 
@@ -154,9 +189,12 @@ export default function Profile() {
     });
     setTweets(tweets);
   };
+
+  // 닉네임 변경 시 즉시 반영되도록 useEffect에 name도 추가
   useEffect(() => {
     fetchTweets();
-  }, []);
+  }, [user, name]);
+
   return (
     <Wrapper>
       <AvatarUpload htmlFor="avatar">
@@ -183,17 +221,14 @@ export default function Profile() {
         type="file"
         accept="image/*"
       />
-      <Name>{user?.displayName ?? "익명"}</Name>
+      <Name onClick={onChangeNick}>{name}</Name>
       {newFile && (
         <SaveButton onClick={onSave}>
           {loading ? "저장 중..." : "프로필 저장"}
         </SaveButton>
       )}
-      <InfoMessage>
-        참고: Firebase Authentication의 프로필 사진은 변경되지 않습니다.
-      </InfoMessage>
       <Tweets>
-        {tweets?.map((tweet) => (
+        {tweets.map((tweet) => (
           <Tweet key={tweet.id} {...tweet} />
         ))}
       </Tweets>

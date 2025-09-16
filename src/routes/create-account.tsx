@@ -13,8 +13,11 @@ import {
 } from "../components/auth-components";
 import GithubButton from "../components/github-btn";
 
-const errors = {
-  "auth/email-already-in-use": "이미존재하는 이메일",
+// 오류 메시지를 담은 객체의 이름을 변경
+const authErrorMap = {
+  "auth/email-already-in-use": "이미 존재하는 이메일입니다.",
+  "auth/weak-password": "비밀번호는 6자리 이상이어야 합니다.",
+  "auth/invalid-email": "올바른 이메일 형식이 아닙니다.",
 };
 
 export default function CreateAccount() {
@@ -23,7 +26,8 @@ export default function CreateAccount() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [firebaseError, setFirebaseError] = useState(""); // 상태 변수 이름도 변경
+
   const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const {
       target: { name, value },
@@ -36,39 +40,41 @@ export default function CreateAccount() {
       setPassword(value);
     }
   };
+
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setError("");
-    if (isLoading || name === " " || email === " " || password === " ") {
+    setFirebaseError("");
+    if (
+      isLoading ||
+      name.trim() === "" ||
+      email.trim() === "" ||
+      password.trim() === ""
+    ) {
       return;
     }
+
     try {
       setLoading(true);
-      //계정생성
       const credentials = await createUserWithEmailAndPassword(
         auth,
         email,
         password
       );
-      console.log(credentials.user);
-      //프로필 이름 설정
       await updateProfile(credentials.user, {
         displayName: name,
       });
-      //홈페이지 리디렉션
       navigate("/");
     } catch (e) {
-      //setError  계정이 있거나 유효하지 않을때
       if (e instanceof FirebaseError) {
-        console.log(e.code, e.message);
-        setError(e.message);
+        // 에러 코드에 따라 메시지 매핑을 활용
+        const mappedError = authErrorMap[e.code as keyof typeof authErrorMap];
+        setFirebaseError(mappedError || e.message); // 매핑된 메시지가 없으면 기본 에러 메시지 사용
       }
     } finally {
       setLoading(false);
     }
-
-    console.log(name, email, password);
   };
+
   return (
     <Wrapper>
       <Title>Join ✖</Title>
@@ -102,7 +108,7 @@ export default function CreateAccount() {
           value={isLoading ? "Loading...." : "Create Account"}
         />
       </Form>
-      {error !== "" ? <Error>{error}</Error> : null}
+      {firebaseError !== "" && <Error>{firebaseError}</Error>}
       <Switcher>
         이미 계정이 있습니까? <Link to="/login">Log In &rarr; </Link>
       </Switcher>

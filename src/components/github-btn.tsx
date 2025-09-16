@@ -1,7 +1,7 @@
 import {
   GithubAuthProvider,
   signInWithPopup,
-  signInWithRedirect,
+  //signInWithRedirect,
 } from "firebase/auth";
 import styled from "styled-components";
 import { auth } from "../routes/firebase";

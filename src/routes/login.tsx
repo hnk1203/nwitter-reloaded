@@ -13,17 +13,23 @@ import {
 } from "../components/auth-components";
 import GithubButton from "../components/github-btn";
 
-const errors = {
-  "auth/email-already-in-use": "이미존재하는 이메일",
+// Rename the error map to avoid a name collision
+const authErrorMap = {
+  "auth/invalid-email": "유효하지 않은 이메일입니다.",
+  "auth/user-not-found": "존재하지 않는 사용자입니다.",
+  "auth/wrong-password": "비밀번호가 올바르지 않습니다.",
 };
 
 export default function CreateAccount() {
   const navigate = useNavigate();
   const [isLoading, setLoading] = useState(false);
-  const [name, setName] = useState("");
+  // Remove the 'name' state as it's not used in login
+  // const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  // Rename the state variable for clarity
+  const [loginError, setLoginError] = useState("");
+
   const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const {
       target: { name, value },
@@ -34,29 +40,28 @@ export default function CreateAccount() {
       setPassword(value);
     }
   };
+
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setError("");
-    if (isLoading || email === " " || password === " ") {
+    setLoginError("");
+    if (isLoading || email === "" || password === "") {
       return;
     }
     try {
       setLoading(true);
       await signInWithEmailAndPassword(auth, email, password);
-      //홈페이지 리디렉션
       navigate("/");
     } catch (e) {
-      //setError  계정이 있거나 유효하지 않을때
       if (e instanceof FirebaseError) {
-        console.log(e.code, e.message);
-        setError(e.message);
+        // Use the new error map to get a localized message
+        const mappedError = authErrorMap[e.code as keyof typeof authErrorMap];
+        setLoginError(mappedError || e.message);
       }
     } finally {
       setLoading(false);
     }
-
-    console.log(name, email, password);
   };
+
   return (
     <Wrapper>
       <Title>Log in ✖</Title>
@@ -79,7 +84,7 @@ export default function CreateAccount() {
         />
         <Input type="submit" value={isLoading ? "Loading...." : "Log In"} />
       </Form>
-      {error !== "" ? <Error>{error}</Error> : null}
+      {loginError !== "" && <Error>{loginError}</Error>}
       <Switcher>
         회원이 아닙니까? <Link to="/create-account">Create one &rarr;</Link>
       </Switcher>
