@@ -172,7 +172,7 @@ export default function Tweet({
   const onCancel = () => {
     setIsEditing(false);
     setEditedTweet(tweet);
-    setNewFileData(fileData || null); // 취소 시 원본 이미지로 되돌리기
+    setNewFileData(fileData || null);
   };
 
   const onTweetChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
